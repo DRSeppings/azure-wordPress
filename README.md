@@ -1,76 +1,65 @@
-# Azure WordPress Terraform Deployment
+# Azure WordPress Setup with Terraform
 
-This repository contains Terraform configurations to build infrastructure for a Linux-based WordPress web application on the free tier of Azure.
+## Project Overview
 
-## Overview
+This project aims to set up WordPress on Azure Free Tier using Infrastructure as Code (IaC) with Terraform. The focus is on creating a Linux web application running with a MySQL database, rather than using the Azure Marketplace App Service offering. This is a work in progress.
 
-The Terraform scripts in this project will:
+## Table of Contents
 
-1. Create a Resource Group.
-2. Set up a Virtual Network and Subnets.
-3. Deploy a Linux-based Virtual Machine.
-4. Configure Network Security Groups.
-5. Set up Azure Database for MySQL.
-6. Deploy WordPress on the Virtual Machine.
-7. Configure necessary DNS settings.
+- [Prerequisites](#prerequisites)
+- [Architecture](#architecture)
+- [Setup Instructions](#setup-instructions)
+- [Resources](#resources)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Prerequisites
 
-- [Terraform](https://www.terraform.io/downloads.html) installed on your local machine.
-- An [Azure account](https://azure.microsoft.com/en-us/free/) with free tier subscription.
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed and configured.
+- [Terraform](https://www.terraform.io/downloads.html) installed
+- Azure CLI installed and configured
+- An Azure account with access to the Free Tier
 
-## Usage
+## Architecture
 
-1. **Clone the repository:**
+The architecture for this setup includes:
+
+- A Linux-based virtual machine for the WordPress application
+- A MySQL database instance
+- Networking components to securely connect the application and database
+
+## Setup Instructions
+
+1. **Clone the Repository**
     ```sh
-    git clone https://github.com/yourusername/azure-wordPress.git
-    cd azure-wordPress
+    git clone https://github.com/yourusername/azure-wordpress.git
+    cd azure-wordpress
     ```
 
-2. **Initialize Terraform:**
+2. **Initialize Terraform**
     ```sh
     terraform init
     ```
 
-3. **Plan the deployment:**
+3. **Plan the Infrastructure**
     ```sh
     terraform plan
     ```
 
-4. **Apply the configuration:**
+4. **Apply the Configuration**
     ```sh
     terraform apply
     ```
 
-5. **Access your WordPress site:**
-   After the deployment is complete, you can access your WordPress site using the public IP address of the Virtual Machine.
+## Resources
 
-## Resources Created
-
-- **Resource Group:** A container that holds related resources for the Azure solution.
-- **Virtual Network and Subnets:** Network infrastructure for the VM.
-- **Linux Virtual Machine:** The server where WordPress will be installed.
-- **Network Security Groups:** Security rules to control inbound and outbound traffic.
-- **Azure Database for MySQL:** Managed MySQL database service for WordPress.
-- **DNS Settings:** Configuration for domain name resolution.
-
-## Cleanup
-
-To destroy the infrastructure created by Terraform, run:
-```sh
-terraform destroy
-```
+- [Terraform Documentation](https://www.terraform.io/docs/index.html)
+- [Azure Free Tier](https://azure.microsoft.com/en-us/free/)
+- [WordPress](https://wordpress.org/)
 
 ## Contributing
 
-Contributions are welcome! Please submit a pull request or open an issue to discuss changes.
+Contributions are welcome! Please fork the repository and submit a pull request.
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-
-- [Terraform](https://www.terraform.io/)
-- [Azure](https://azure.microsoft.com/)
