@@ -1,3 +1,9 @@
+# Trigger the pipeline on pushes to the 'main' branch
+trigger:
+  branches:
+    include:
+      - main 
+
 # Use the self-hosted agent pool for Windows
 pool:
   name: SelfHostedPool # Replace with your actual pool name
