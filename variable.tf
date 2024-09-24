@@ -46,9 +46,11 @@ variable "wordpress_admin_email" {
   default     = "test@testing.com"  
 }
 
-variable "wordpress_admin_password" {
-  description = "The password of the WordPress admin user"
-  default     = "P@ssword1234!"
+# Generate a random password for the WordPress admin user
+resource "random_password" "wordpress_admin_password" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
 }
 
 variable "wordpress_admin_user" {
@@ -63,8 +65,9 @@ variable "db_server_admin_login" {
   default     = "adminuser"
 }
 
-variable "db_server_admin_password" {
-  description = "The password of the MySQL server admin user"
-  default     = "P@ssword1234"
+# Generate a random password for the MySQL admin user
+resource "random_password" "db_server_admin_password" {
+  length           = 16
+  special          = true
+  override_special = "_%@"
 }
-

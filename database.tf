@@ -11,7 +11,7 @@ resource "azurerm_mysql_flexible_server" "mysql_server" {
   private_dns_zone_id = azurerm_private_dns_zone.private_dns_zone.id
   resource_group_name = azurerm_resource_group.resource_group.name
   administrator_login = var.db_server_admin_login
-  administrator_password = var.db_server_admin_password
+  administrator_password = random_password.wordpress_admin_password.result
   sku_name = "B_Standard_B1s"
 
   tags = var.tags
