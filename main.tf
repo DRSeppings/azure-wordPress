@@ -45,7 +45,7 @@ resource "azurerm_linux_web_app" "linux_web_app" {
   connection_string {
     name  = "WORDPRESS_ADMIN_PASSWORD"
     type  = "Custom"
-    value = var.wordpress_admin_password
+    value = random_password.db_server_admin_password.result
   }
   connection_string {
     name  = "WORDPRESS_ADMIN_USER"
@@ -58,6 +58,7 @@ resource "azurerm_linux_web_app" "linux_web_app" {
   }
   site_config {
     ftps_state                        = "FtpsOnly"
+    linux_fx_version                  = "PHP|7.4"
   }
   depends_on = [
     azurerm_user_assigned_identity.ua_identity,
