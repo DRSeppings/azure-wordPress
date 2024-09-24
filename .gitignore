@@ -1,0 +1,14 @@
+
+.terraform.lock.hcl
+
+*.info
+
+*.exe
+
+*.tfstate
+
+*.tfvars
+
+.terraform/providers/registry.terraform.io/hashicorp/azurerm/4.2.0/windows_386/LICENSE.txt
+
+*.backup
