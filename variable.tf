@@ -1,25 +1,3 @@
-# Terraform backend configuration for storing the state file in Azure Storage Account
-# In this intance I have use a storage account that is isolated from the resources that will be deployed
-variable "backend_rg_name" {
-  description = "The name of the resource group where the storage account is located"
-  default     = "tf-backend-rg"
-}
-
-variable "backend_storage_account_name" {
-  description = "The name of the storage account where the state file will be stored"
-  default     = "drtfbkend"
-}
-
-variable "backend_container_name" {
-  description = "The name of the blob container where the state file will be stored"
-  default     = "terraform"  
-}
-
-variable "backend_key" {
-  description = "The name of the state file"
-  default     = "terraform.tfstate"  
-}
-
 # Global variables
 # Define the variables that will be used in the configuration
 variable "project_name" {
