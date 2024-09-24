@@ -3,8 +3,9 @@ trigger:
     include:
       - main
 
+# Use the self-hosted agent pool for Windows
 pool:
-  vmImage: 'ubuntu-latest'
+  name: SelfHostedPool # Replace with your actual pool name
 
 variables:
   - group: azure-vars
@@ -12,26 +13,26 @@ variables:
 steps:
 - checkout: self
 
-# Install Terraform using bash
-- script: |
-    curl -o terraform.zip https://releases.hashicorp.com/terraform/1.5.0/terraform_1.5.0_linux_amd64.zip
-    unzip terraform.zip
-    sudo mv terraform /usr/local/bin/
+# Install Terraform on Windows using PowerShell
+- powershell: |
+    Invoke-WebRequest -Uri https://releases.hashicorp.com/terraform/1.5.0/terraform_1.5.0_windows_amd64.zip -OutFile terraform.zip
+    Expand-Archive -Path terraform.zip -DestinationPath $Env:SystemDrive\terraform
+    [System.Environment]::SetEnvironmentVariable('PATH', $Env:SystemDrive + '\terraform;' + $Env:PATH, [System.EnvironmentVariableTarget]::Machine)
     terraform --version
   displayName: 'Install Terraform'
 
 # Terraform Init without backend
-- script: |
+- powershell: |
     terraform init
   displayName: 'Terraform Init'
 
 # Terraform Plan
-- script: |
+- powershell: |
     terraform plan -out=tfplan
   displayName: 'Terraform Plan'
 
 # Terraform Apply
-- script: |
+- powershell: |
     terraform apply tfplan
   displayName: 'Terraform Apply'
   env:
