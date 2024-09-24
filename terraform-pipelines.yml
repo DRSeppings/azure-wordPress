@@ -10,6 +10,14 @@ steps:
 
 # Install Terraform on Windows using PowerShell (Skip if already installed)
 - powershell: |
+    function Install-Terraform {
+        $terraformVersion = "1.5.0"
+        Invoke-WebRequest -Uri "https://releases.hashicorp.com/terraform/$terraformVersion/terraform_${terraformVersion}_windows_amd64.zip" -OutFile terraform.zip
+        Expand-Archive -Path terraform.zip -DestinationPath $Env:SystemDrive\terraform
+        [System.Environment]::SetEnvironmentVariable('PATH', $Env:SystemDrive + '\terraform;' + $Env:PATH, [System.EnvironmentVariableTarget]::Machine)
+        Write-Host "Terraform $terraformVersion installed."
+    }
+
     $terraformVersion = "1.5.0"
     $terraformPath = "$Env:SystemDrive\terraform\terraform.exe"
     
@@ -25,13 +33,6 @@ steps:
     } else {
         Write-Host "Terraform not found. Installing version $terraformVersion."
         Install-Terraform
-    }
-
-    function Install-Terraform {
-        Invoke-WebRequest -Uri "https://releases.hashicorp.com/terraform/$terraformVersion/terraform_${terraformVersion}_windows_amd64.zip" -OutFile terraform.zip
-        Expand-Archive -Path terraform.zip -DestinationPath $Env:SystemDrive\terraform
-        [System.Environment]::SetEnvironmentVariable('PATH', $Env:SystemDrive + '\terraform;' + $Env:PATH, [System.EnvironmentVariableTarget]::Machine)
-        Write-Host "Terraform $terraformVersion installed."
     }
 
     terraform --version
