@@ -2,7 +2,7 @@
 trigger:
   branches:
     include:
-      - main 
+      - main
 
 # Use the self-hosted agent pool for Windows
 pool:
@@ -10,56 +10,108 @@ pool:
 
 variables:
   - group: azure-vars
+  - name: TF_VERSION
+    value: '1.5.0'
 
-steps:
-- checkout: self
+stages:
 
-# Install Terraform on Windows using PowerShell (Skip if already installed)
-- powershell: |
-    function Install-Terraform {
-        $terraformVersion = "1.5.0"
-        Invoke-WebRequest -Uri "https://releases.hashicorp.com/terraform/$terraformVersion/terraform_${terraformVersion}_windows_amd64.zip" -OutFile terraform.zip
-        Expand-Archive -Path terraform.zip -DestinationPath $Env:SystemDrive\terraform
-        [System.Environment]::SetEnvironmentVariable('PATH', $Env:SystemDrive + '\terraform;' + $Env:PATH, [System.EnvironmentVariableTarget]::Machine)
-        Write-Host "Terraform $terraformVersion installed."
-    }
+# ---------------------------------------------------------------------------
+# Stage 1: Plan — initialise Terraform and produce a plan artifact
+# ---------------------------------------------------------------------------
+- stage: Plan
+  displayName: 'Terraform Plan'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Init & Plan'
+    steps:
+    - checkout: self
 
-    $terraformVersion = "1.5.0"
-    $terraformPath = "$Env:SystemDrive\terraform\terraform.exe"
-    
-    if (Test-Path $terraformPath) {
-        $installedVersion = (& $terraformPath --version).Split("`n")[0] -replace "Terraform v", ""
-        if ($installedVersion -eq $terraformVersion) {
-            Write-Host "Terraform $terraformVersion is already installed. Skipping installation."
+    - powershell: |
+        function Install-Terraform {
+            $version = "$(TF_VERSION)"
+            Invoke-WebRequest `
+              -Uri "https://releases.hashicorp.com/terraform/$version/terraform_${version}_windows_amd64.zip" `
+              -OutFile terraform.zip
+            Expand-Archive -Path terraform.zip -DestinationPath "$Env:SystemDrive\terraform" -Force
+            [System.Environment]::SetEnvironmentVariable(
+              'PATH',
+              "$Env:SystemDrive\terraform;" + $Env:PATH,
+              [System.EnvironmentVariableTarget]::Machine
+            )
+            Write-Host "Terraform $version installed."
+        }
+
+        $terraformExe = "$Env:SystemDrive\terraform\terraform.exe"
+        if (Test-Path $terraformExe) {
+            $installed = (& $terraformExe --version).Split("`n")[0] -replace "Terraform v", ""
+            if ($installed -eq "$(TF_VERSION)") {
+                Write-Host "Terraform $(TF_VERSION) already installed."
+            } else {
+                Write-Host "Updating Terraform from $installed to $(TF_VERSION)."
+                Remove-Item $terraformExe -Force
+                Install-Terraform
+            }
         } else {
-            Write-Host "Different version of Terraform detected. Installing version $terraformVersion."
-            Remove-Item $terraformPath
+            Write-Host "Terraform not found. Installing $(TF_VERSION)."
             Install-Terraform
         }
-    } else {
-        Write-Host "Terraform not found. Installing version $terraformVersion."
-        Install-Terraform
-    }
+        terraform --version
+      displayName: 'Install Terraform $(TF_VERSION)'
 
-    terraform --version
-  displayName: 'Install Terraform (if needed)'
+    - powershell: terraform init
+      displayName: 'Terraform Init'
+      env:
+        ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+        ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+        ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+        ARM_TENANT_ID: $(ARM_TENANT_ID)
 
-# Terraform Init without backend
-- powershell: |
-    terraform init
-  displayName: 'Terraform Init'
+    - powershell: terraform plan -out=tfplan
+      displayName: 'Terraform Plan'
+      env:
+        ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+        ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+        ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+        ARM_TENANT_ID: $(ARM_TENANT_ID)
 
-# Terraform Plan
-- powershell: |
-    terraform plan -out=tfplan
-  displayName: 'Terraform Plan'
+    - publish: $(System.DefaultWorkingDirectory)/tfplan
+      artifact: terraform-plan
+      displayName: 'Publish Plan Artifact'
 
-# Terraform Apply
-- powershell: |
-    terraform apply tfplan
+# ---------------------------------------------------------------------------
+# Stage 2: Apply — requires manual approval.
+# Configure an approval check on the 'production' environment in:
+# Azure DevOps > Pipelines > Environments > production > Approvals and checks
+# ---------------------------------------------------------------------------
+- stage: Apply
   displayName: 'Terraform Apply'
-  env:
-    ARM_CLIENT_ID: $(ARM_CLIENT_ID)
-    ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
-    ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
-    ARM_TENANT_ID: $(ARM_TENANT_ID)
+  dependsOn: Plan
+  jobs:
+  - deployment: TerraformApply
+    displayName: 'Apply (requires approval)'
+    environment: production
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - download: current
+            artifact: terraform-plan
+
+          - powershell: terraform init
+            displayName: 'Terraform Init'
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+
+          - powershell: |
+              terraform apply $(Pipeline.Workspace)/terraform-plan/tfplan
+            displayName: 'Terraform Apply'
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)

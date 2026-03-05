@@ -11,11 +11,8 @@ resource "azurerm_service_plan" "service_plan" {
   name                = "${var.environment}-${var.project_name}-asp"
   os_type             = "Linux"
   resource_group_name = azurerm_resource_group.resource_group.name
-  sku_name            = "B1"
-  tags = var.tags
-  depends_on = [
-    azurerm_resource_group.resource_group,
-  ]
+  sku_name            = var.app_service_sku
+  tags                = local.default_tags
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/linux_web_app
@@ -25,17 +22,17 @@ resource "azurerm_linux_web_app" "linux_web_app" {
     DATABASE_NAME                         = azurerm_mysql_flexible_database.mysql_database.name  
     DATABASE_USERNAME                     = azurerm_user_assigned_identity.ua_identity.name      
     ENABLE_MYSQL_MANAGED_IDENTITY         = "true"
-    SETUP_PHPMYADMIN                      = "true"
+    SETUP_PHPMYADMIN                      = "false"
     WEBSITES_CONTAINER_START_TIME_LIMIT   = "1800"
     WEBSITES_ENABLE_APP_SERVICE_STORAGE   = "true"
     WORDPRESS_LOCALE_CODE                 = "en_US"
     WORDPRESS_LOCAL_STORAGE_CACHE_ENABLED = "true"
   }
   location            = var.location
-  name                = "${var.webapp_url_name}"
+  name                = var.webapp_url_name
   resource_group_name = azurerm_resource_group.resource_group.name
-  service_plan_id     = azurerm_service_plan.service_plan.id
-  tags = var.tags
+  service_plan_id           = azurerm_service_plan.service_plan.id
+  tags                      = local.default_tags
   virtual_network_subnet_id = azurerm_subnet.app_subnet.id  
   connection_string {
     name  = "WORDPRESS_ADMIN_EMAIL"
@@ -45,7 +42,7 @@ resource "azurerm_linux_web_app" "linux_web_app" {
   connection_string {
     name  = "WORDPRESS_ADMIN_PASSWORD"
     type  = "Custom"
-    value = random_password.db_server_admin_password.result
+    value = random_password.wordpress_admin_password.result
   }
   connection_string {
     name  = "WORDPRESS_ADMIN_USER"
@@ -56,12 +53,13 @@ resource "azurerm_linux_web_app" "linux_web_app" {
     identity_ids = [azurerm_user_assigned_identity.ua_identity.id]
     type         = "UserAssigned"
   }
+  https_only = true
   site_config {
-    ftps_state                        = "FtpsOnly"
+    ftps_state    = "FtpsOnly"
+    http2_enabled = true
+    application_stack {
+      docker_image_name   = "appsvc/wordpress-alpine-php:8.3"
+      docker_registry_url = "https://mcr.microsoft.com"
+    }
   }
-  depends_on = [
-    azurerm_user_assigned_identity.ua_identity,
-    azurerm_subnet.app_subnet,
-    azurerm_service_plan.service_plan,
-  ]
 }

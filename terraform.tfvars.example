@@ -1,0 +1,25 @@
+# Copy this file to terraform.tfvars and populate with real values.
+# NEVER commit terraform.tfvars to source control.
+
+project_name    = "my-wordpress"
+webapp_url_name = "my-wordpress-app-unique"  # Must be globally unique in Azure (no default — required)
+location        = "northeurope"
+environment     = "dev"
+
+# WordPress admin credentials
+wordpress_admin_email = "admin@example.com"
+wordpress_admin_user  = "wpadmin"        # Avoid "admin" — it is heavily targeted
+
+# MySQL admin login
+db_server_admin_login = "mysqladmin"     # Avoid "adminuser" — common in attack dictionaries
+
+# MySQL configuration
+mysql_version                = "8.0.21"
+mysql_backup_retention_days  = 7         # Increase for production (up to 35)
+mysql_geo_redundant_backup   = false     # Set to true for production resilience
+
+# Tags applied to all resources
+tags = {
+  owner      = "your-name"
+  cost_center = "12345"
+}

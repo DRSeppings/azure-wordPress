@@ -1,14 +1,40 @@
 
-.terraform.lock.hcl
-
-*.info
-
-*.exe
-
+# Terraform state files
 *.tfstate
-
-*.tfvars
-
-.terraform/providers/registry.terraform.io/hashicorp/azurerm/4.2.0/windows_386/LICENSE.txt
-
+*.tfstate.*
 *.backup
+
+# Terraform plan files
+tfplan
+*.tfplan
+
+# Terraform variable files (may contain secrets)
+*.tfvars
+*.tfvars.json
+
+# Local .terraform directories and provider binaries
+**/.terraform/*
+.terraform/
+
+# Lock file — commit this to pin provider versions
+# .terraform.lock.hcl
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform CLI config
+.terraformrc
+terraform.rc
+
+# OS junk
+*.info
+*.exe
+.DS_Store
+Thumbs.db

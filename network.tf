@@ -10,32 +10,22 @@ resource "azurerm_user_assigned_identity" "ua_identity" {
   location            = var.location
   name                = "${var.environment}-${var.project_name}-wpidentity"
   resource_group_name = azurerm_resource_group.resource_group.name
-  tags = var.tags
-  depends_on = [
-    azurerm_resource_group.resource_group,
-  ]
+  tags                = local.default_tags
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone
 resource "azurerm_private_dns_zone" "private_dns_zone" {
-  name                = "${var.environment}-${var.project_name}-privatelink.mysql.database.azure.com"
+  name                = "privatelink.mysql.database.azure.com"
   resource_group_name = azurerm_resource_group.resource_group.name
-  tags = var.tags
-  depends_on = [
-    azurerm_resource_group.resource_group,
-  ]
+  tags                = local.default_tags
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/private_dns_zone_virtual_network_link
 resource "azurerm_private_dns_zone_virtual_network_link" "private_dns_zone_vnet_link" {
-  name                  = "${azurerm_private_dns_zone.private_dns_zone.name}-vnetlink"
+  name                  = "${var.environment}-${var.project_name}-mysql-dnslink"
   private_dns_zone_name = azurerm_private_dns_zone.private_dns_zone.name
   resource_group_name   = azurerm_resource_group.resource_group.name
   virtual_network_id    = azurerm_virtual_network.vnet.id
-  depends_on = [
-    azurerm_private_dns_zone.private_dns_zone,
-    azurerm_virtual_network.vnet,
-  ]
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/virtual_network
@@ -44,10 +34,7 @@ resource "azurerm_virtual_network" "vnet" {
   location            = var.location
   name                = "${var.environment}-${var.project_name}-vnet"
   resource_group_name = azurerm_resource_group.resource_group.name
-  tags = var.tags
-  depends_on = [
-    azurerm_resource_group.resource_group,
-  ]
+  tags                = local.default_tags
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet
@@ -63,9 +50,6 @@ resource "azurerm_subnet" "app_subnet" {
       name    = "Microsoft.Web/serverFarms"
     }
   }
-  depends_on = [
-    azurerm_virtual_network.vnet,
-  ]
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet
@@ -75,13 +59,102 @@ resource "azurerm_subnet" "db_subnet" {
   resource_group_name  = azurerm_resource_group.resource_group.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   delegation {
-    name = "dlg-appService"
+    name = "dlg-mysqlFlexibleServer"
     service_delegation {
       actions = ["Microsoft.Network/virtualNetworks/subnets/join/action"]
       name    = "Microsoft.DBforMySQL/flexibleServers"
     }
   }
-  depends_on = [
-    azurerm_virtual_network.vnet,
-  ]
+}
+
+# ---------------------------------------------------------------------------
+# Network Security Groups
+# ---------------------------------------------------------------------------
+
+#https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group
+resource "azurerm_network_security_group" "app_nsg" {
+  location            = var.location
+  name                = "${var.environment}-${var.project_name}-app-nsg"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  tags                = local.default_tags
+
+  security_rule {
+    name                       = "Allow-HTTPS-Inbound"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Allow-HTTP-Inbound"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Allow-MySQL-Outbound"
+    priority                   = 200
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3306"
+    source_address_prefix      = "10.0.0.0/25"
+    destination_address_prefix = "10.0.0.128/25"
+  }
+}
+
+#https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/network_security_group
+resource "azurerm_network_security_group" "db_nsg" {
+  location            = var.location
+  name                = "${var.environment}-${var.project_name}-db-nsg"
+  resource_group_name = azurerm_resource_group.resource_group.name
+  tags                = local.default_tags
+
+  security_rule {
+    name                       = "Allow-MySQL-From-AppSubnet"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "3306"
+    source_address_prefix      = "10.0.0.0/25"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "Deny-All-Other-Inbound"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Deny"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+}
+
+#https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association
+resource "azurerm_subnet_network_security_group_association" "app_subnet_nsg" {
+  subnet_id                 = azurerm_subnet.app_subnet.id
+  network_security_group_id = azurerm_network_security_group.app_nsg.id
+}
+
+#https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet_network_security_group_association
+resource "azurerm_subnet_network_security_group_association" "db_subnet_nsg" {
+  subnet_id                 = azurerm_subnet.db_subnet.id
+  network_security_group_id = azurerm_network_security_group.db_nsg.id
 }

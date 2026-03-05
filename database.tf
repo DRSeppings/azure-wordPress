@@ -10,35 +10,29 @@ resource "azurerm_mysql_flexible_server" "mysql_server" {
   name                = "${var.environment}-${var.project_name}-dbserver"
   private_dns_zone_id = azurerm_private_dns_zone.private_dns_zone.id
   resource_group_name = azurerm_resource_group.resource_group.name
-  administrator_login = var.db_server_admin_login
-  administrator_password = random_password.wordpress_admin_password.result
-  sku_name = "B_Standard_B1s"
+  administrator_login    = var.db_server_admin_login
+  administrator_password = random_password.db_server_admin_password.result
+  sku_name = var.mysql_sku
+  version  = var.mysql_version
 
-  tags = var.tags
-  zone = "1"
+  backup_retention_days        = var.mysql_backup_retention_days
+  geo_redundant_backup_enabled = var.mysql_geo_redundant_backup
+
+  tags = local.default_tags
+  zone = var.mysql_zone
   identity {
     identity_ids = [azurerm_user_assigned_identity.ua_identity.id]
     type         = "UserAssigned"
   }
-  depends_on = [
-    azurerm_user_assigned_identity.ua_identity,
-    azurerm_private_dns_zone.private_dns_zone,
-    azurerm_subnet.db_subnet,
-    azurerm_private_dns_zone_virtual_network_link.private_dns_zone_vnet_link
-  ]
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/mysql_flexible_server_active_directory_administrator
 resource "azurerm_mysql_flexible_server_active_directory_administrator" "mysql_server_ad_admin" {
   identity_id = azurerm_user_assigned_identity.ua_identity.id
   login       = azurerm_user_assigned_identity.ua_identity.name
-  object_id   = data.azurerm_client_config.current.object_id
+  object_id   = azurerm_user_assigned_identity.ua_identity.principal_id
   server_id   = azurerm_mysql_flexible_server.mysql_server.id
   tenant_id   = data.azurerm_client_config.current.tenant_id
-  depends_on = [
-    azurerm_mysql_flexible_server.mysql_server,
-    azurerm_user_assigned_identity.ua_identity,
-  ]
 }
 
 #https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/mysql_flexible_database
@@ -48,7 +42,4 @@ resource "azurerm_mysql_flexible_database" "mysql_database" {
   name                = "${var.environment}-${var.project_name}-mysql-db"
   resource_group_name = azurerm_resource_group.resource_group.name
   server_name         = azurerm_mysql_flexible_server.mysql_server.name
-  depends_on = [
-    azurerm_mysql_flexible_server.mysql_server,
-  ]
 }
